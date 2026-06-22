@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Fitur</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+        }
+
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px 30px;
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            width: 90%;
+            max-width: 400px;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+            font-size: 24px;
+            letter-spacing: 1px;
+        }
+
+        .btn-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .btn {
+            display: block;
+            text-decoration: none;
+            color: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        /* Warna masing-masing tombol */
+        .btn-camera {
+            background: #e63946;
+        }
+
+        .btn-camera:hover {
+            background: #c1121f;
+            transform: translateY(-2px);
+        }
+
+        .btn-clock {
+            background: #4a4e69;
+        }
+
+        .btn-clock:hover {
+            background: #22223b;
+            transform: translateY(-2px);
+        }
+
+        .btn-sound {
+            background: #2a9d8f;
+        }
+
+        .btn-sound:hover {
+            background: #264653;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Pilih Fitur</h1>
+        <div class="btn-container">
+            <a href="https://zshare-fawn.vercel.app/camera.html" class="btn btn-camera">Live Camera</a>
+            
+            <a href="https://zshare-fawn.vercel.app/clock.html" class="btn btn-clock">Clock</a>
+            
+            <a href="https://zshare-fawn.vercel.app/record-sound.html" class="btn btn-sound">Record Sound</a>
+        </div>
+    </div>
+
+</body>
+</html>
+
