@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream Kamera IP</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #222;
+            color: white;
+            padding: 20px;
+        }
+        video {
+            width: 100%;
+            max-width: 600px;
+            border: 3px solid #00adb5;
+            border-radius: 8px;
+            background-color: #000;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #00adb5;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        button:hover {
+            background-color: #007c82;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Akses Kamera Jarak Jauh</h1>
+    <button id="start-btn">Aktifkan Kamera</button>
+    <br>
+    <video id="webcam" autoplay playsinline></video>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const startBtn = document.getElementById('start-btn');
+
+        startBtn.addEventListener('click', async () => {
+            try {
+                // Meminta izin kamera ke browser
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user" }, // Gunakan "environment" untuk kamera belakang HP
+                    audio: false 
+                });
+                
+                // Menampilkan stream ke elemen <video>
+                video.srcObject = stream;
+                startBtn.style.display = 'none'; // Sembunyikan tombol setelah aktif
+            } catch (err) {
+                console.error("Gagal mengakses kamera: ", err);
+                alert("Izin kamera ditolak atau perangkat tidak mendukung.");
+            }
+        });
+    </script>
+</body>
+</html>
