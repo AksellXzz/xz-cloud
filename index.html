@@ -101,7 +101,7 @@
             margin-top: 20px;
             padding: 20px;
             width: 100%;
-            max-width: 450px;
+            max-width: 400px;
             box-sizing: border-box;
         }
         .remote-container h3 {
@@ -123,7 +123,7 @@
             color: white;
             font-size: 14px;
             text-align: center;
-            width: 180px;
+            width: 160px;
         }
         .ip-input-group input:focus {
             outline: none;
@@ -147,7 +147,7 @@
             text-decoration: none;
             font-weight: bold;
             font-family: monospace;
-            font-size: 14px;
+            font-size: 15px;
         }
         .access-link-box a:hover {
             text-decoration: underline;
@@ -156,7 +156,6 @@
             font-size: 11px;
             color: #888;
             margin-top: 8px;
-            line-height: 1.4;
         }
 
         /* --- CAMERA INTERFACE --- */
@@ -167,5 +166,242 @@
             max-width: 600px;
         }
         video {
-            width
+            width: 100%;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        video.mirror {
+            transform: scaleX(-1);
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            background-color: #00adb5;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 173, 181, 0.3);
+        }
+        button:hover {
+            background-color: #007c82;
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        #status {
+            margin-top: 12px;
+            font-style: italic;
+            color: #aaa;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Live Cam</h1>
+    
+    <div class="battery-container glass-panel">
+        <div class="battery-icon-wrapper">
+            <div id="battery-liquid" class="battery-liquid"></div>
+        </div>
+        <span id="battery-text">--%</span>
+    </div>
+
+    <div class="controls">
+        <button id="start-btn">Enable Camera</button>
+        <button id="switch-btn" style="display: none;">Change Camera 🔄</button>
+    </div>
+
+    <div class="video-container">
+        <video id="webcam" autoplay playsinline></video>
+    </div>
+    
+    <div id="status">Camera is not active</div>
+
+    <div class="clock-container glass-panel">
+        <div id="digital-clock">00:00:00</div>
+        <div id="current-day">Hari, 00 Masing 0000</div>
+    </div>
+
+    <br>
+
+    <div class="remote-container glass-panel">
+        <h3>🔗 Remote LAN Access</h3>
+        <div class="ip-input-group">
+            <input type="text" id="local-ip" placeholder="Masukkan IP Server (ex: 192.168.1.5)" value="localhost">
+            <button id="btn-save-ip">Set IP</button>
+        </div>
+        <div class="access-link-box">
+            <span style="font-size: 12px; color: #aaa; display:block; margin-bottom:4px;">Link Akses Perangkat Lain:</span>
+            <a id="remote-link" href="#" target="_blank">http://localhost</a>
+        </div>
+        <p class="hint-text">*Pastikan HP/Laptop pengakses berada di satu jaringan Wi-Fi yang sama.</p>
+    </div>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const startBtn = document.getElementById('start-btn');
+        const switchBtn = document.getElementById('switch-btn');
+        const statusDiv = document.getElementById('status');
+
+        let currentStream = null;
+        let currentFacingMode = "user"; 
+
+        // --- SCRIPT: AKSES JARAK JAUH GENERATOR ---
+        const ipInput = document.getElementById('local-ip');
+        const saveIpBtn = document.getElementById('btn-save-ip');
+        const remoteLink = document.getElementById('remote-link');
+
+        // Mengambil nama file HTML yang sedang berjalan saat ini
+        const currentFileName = window.location.pathname.split('/').pop() || 'index.html';
+
+        function generateRemoteLink() {
+            const ipValue = ipInput.value.trim() || 'localhost';
             
+            // Jika dijalankan lewat local server (Node.js/Live Server Code), sertakan port-nya jika ada
+            const port = window.location.port ? `:${window.location.port}` : '';
+            
+            let finalLink = '';
+            if (window.location.protocol === 'file:') {
+                // Jika dibuka via file offline biasa
+                finalLink = `Silakan ganti localhost pada browser perangkat lain dengan IP komputer ini.`;
+                remoteLink.innerText = `http://[IP-KAMERAMU]/${currentFileName}`;
+                remoteLink.removeAttribute('href');
+            } else {
+                // Jika di-host di local web server (XAMPP / Live Server Extension)
+                finalLink = `${window.location.protocol}//${ipValue}${port}${window.location.pathname}`;
+                remoteLink.href = finalLink;
+                remoteLink.innerText = finalLink;
+            }
+            
+            // Simpan IP di local storage agar tidak hilang saat di-refresh
+            localStorage.setItem('savedLocalIp', ipValue);
+        }
+
+        // Load IP yang tersimpan sebelumnya jika ada
+        if(localStorage.getItem('savedLocalIp')) {
+            ipInput.value = localStorage.getItem('savedLocalIp');
+        }
+        
+        saveIpBtn.addEventListener('click', generateRemoteLink);
+        // Jalankan sekali saat start
+        generateRemoteLink();
+
+
+        // --- SCRIPT: MANAGEMENT BATERAI DENGAN BACKUP ---
+        const batteryLiquid = document.getElementById('battery-liquid');
+        const batteryText = document.getElementById('battery-text');
+
+        function updateBatteryUI(level, isCharging) {
+            const percentage = Math.round(level * 100);
+            batteryText.innerText = `${percentage}% ${isCharging ? '⚡' : ''}`;
+            batteryLiquid.style.width = `${percentage}%`;
+
+            if (percentage <= 20) {
+                batteryLiquid.style.background = 'linear-gradient(90deg, #ff416c, #ff4b2b)';
+                batteryLiquid.style.boxShadow = '0 0 10px rgba(255, 75, 43, 0.5)';
+            } else if (percentage <= 50) {
+                batteryLiquid.style.background = 'linear-gradient(90deg, #f7971e, #ffd200)';
+                batteryLiquid.style.boxShadow = '0 0 10px rgba(255, 210, 0, 0.5)';
+            } else {
+                batteryLiquid.style.background = 'linear-gradient(90deg, #00b4db, #00adb5)';
+                batteryLiquid.style.boxShadow = '0 0 10px rgba(0, 173, 181, 0.5)';
+            }
+        }
+
+        if ('getBattery' in navigator) {
+            navigator.getBattery().then(battery => {
+                updateBatteryUI(battery.level, battery.charging);
+                battery.addEventListener('levelchange', () => updateBatteryUI(battery.level, battery.charging));
+                battery.addEventListener('chargingchange', () => updateBatteryUI(battery.level, battery.charging));
+            });
+        } else {
+            batteryText.innerText = "N/A";
+            batteryLiquid.style.width = "100%";
+        }
+
+        // --- SCRIPT: JAM DIGITAL & HARI ---
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('digital-clock').innerText = `${hours}:${minutes}:${seconds}`;
+
+            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            
+            document.getElementById('current-day').innerText = `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+
+        // --- SCRIPT: SISTEM KAMERA ---
+        function stopCurrentStream() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => {
+                    track.stop();
+                });
+            }
+        }
+
+        async function startCamera(facingMode) {
+            stopCurrentStream();
+            statusDiv.innerText = "Opening Camera...";
+
+            try {
+                const constraints = {
+                    video: { 
+                        facingMode: facingMode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                };
+
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                currentStream = stream;
+                video.srcObject = stream;
+
+                if (facingMode === "user") {
+                    video.classList.add('mirror');
+                    statusDiv.innerText = "Active Front Camera";
+                } else {
+                    video.classList.remove('mirror');
+                    statusDiv.innerText = "Rear Camera Active";
+                }
+
+                startBtn.style.display = 'none';
+                switchBtn.style.display = 'inline-block';
+
+            } catch (err) {
+                console.error("Failed to access camera: ", err);
+                statusDiv.innerText = "Failed to access camera.";
+                alert("Permission denied or camera type is not available on this device.");
+            }
+        }
+
+        startBtn.addEventListener('click', () => {
+            startCamera(currentFacingMode);
+        });
+
+        switchBtn.addEventListener('click', () => {
+            currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
+            startCamera(currentFacingMode);
+        });
+    </script>
+</body>
+</html>
