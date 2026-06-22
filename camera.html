@@ -58,18 +58,18 @@
 </head>
 <body>
 
-    <h1>Live Kamera Perangkat</h1>
+    <h1>Live Cam</h1>
     
     <div class="controls">
-        <button id="start-btn">Aktifkan Kamera</button>
-        <button id="switch-btn" style="display: none;">Ganti Kamera 🔄</button>
+        <button id="start-btn">Enable Camera</button>
+        <button id="switch-btn" style="display: none;">Change Camera 🔄</button>
     </div>
 
     <div class="video-container">
         <video id="webcam" autoplay playsinline></video>
     </div>
     
-    <div id="status">Kamera belum aktif</div>
+    <div id="status">Camera is not active</div>
 
     <script>
         const video = document.getElementById('webcam');
@@ -93,7 +93,7 @@
         // Fungsi utama untuk menyalakan kamera
         async function startCamera(facingMode) {
             stopCurrentStream();
-            statusDiv.innerText = "Membuka kamera...";
+            statusDiv.innerText = "Opening Camera...";
 
             try {
                 const constraints = {
@@ -112,19 +112,19 @@
                 // Mengatur orientasi/efek cermin agar tidak terbalik
                 if (facingMode === "user") {
                     video.classList.add('mirror'); // Kamera depan dicerminkan agar natural seperti kaca
-                    statusDiv.innerText = "Kamera Depan Aktif";
+                    statusDiv.innerText = "Active Front Camera";
                 } else {
                     video.classList.remove('mirror'); // Kamera belakang normal (tidak dicerminkan)
-                    statusDiv.innerText = "Kamera Belakang Aktif";
+                    statusDiv.innerText = "Rear Camera Active";
                 }
 
                 startBtn.style.display = 'none';
                 switchBtn.style.display = 'inline-block';
 
             } catch (err) {
-                console.error("Gagal mengakses kamera: ", err);
-                statusDiv.innerText = "Gagal mengakses kamera.";
-                alert("Izin ditolak atau jenis kamera tidak tersedia di perangkat ini.");
+                console.error("Failed to access camera: ", err);
+                statusDiv.innerText = "Failed to access camera.";
+                alert("Permission denied or camera type is not available on this device.");
             }
         }
 
