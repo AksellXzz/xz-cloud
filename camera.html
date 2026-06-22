@@ -8,10 +8,94 @@
         body {
             font-family: Arial, sans-serif;
             text-align: center;
-            background-color: #222;
+            background: linear-gradient(135deg, #1a1a2e, #16161a);
             color: white;
             padding: 20px;
+            min-height: 100vh;
+            margin: 0;
+            box-sizing: border-box;
         }
+        h1 {
+            margin-top: 10px;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+        
+        /* --- LIQUID GLASS STYLE ELEMENT --- */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px) saturate(180%);
+            -webkit-backdrop-filter: blur(12px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37),
+                        inset 0 4px 4px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        /* --- BATTERY INDICATOR --- */
+        .battery-container {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 20px;
+            margin-bottom: 20px;
+        }
+        .battery-icon-wrapper {
+            position: relative;
+            width: 45px;
+            height: 22px;
+            border: 2px solid rgba(255, 255, 255, 0.7);
+            border-radius: 6px;
+            padding: 2px;
+            box-sizing: border-box;
+        }
+        .battery-icon-wrapper::after {
+            content: '';
+            position: absolute;
+            right: -5px;
+            top: 5px;
+            width: 3px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 0 3px 3px 0;
+        }
+        .battery-liquid {
+            height: 100%;
+            width: 0%; /* Diatur dinamis via JS */
+            background: linear-gradient(90deg, #00b4db, #00adb5);
+            border-radius: 3px;
+            transition: width 0.5s ease, background 0.5s ease;
+            box-shadow: 0 0 10px rgba(0, 173, 181, 0.5);
+        }
+        #battery-text {
+            font-weight: bold;
+            font-size: 16px;
+            letter-spacing: 0.5px;
+        }
+
+        /* --- CLOCK AND DATE PANEL --- */
+        .clock-container {
+            display: inline-block;
+            margin-top: 25px;
+            padding: 15px 30px;
+            min-width: 200px;
+        }
+        #digital-clock {
+            font-size: 2rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            color: #00adb5;
+            text-shadow: 0 0 10px rgba(0, 173, 181, 0.3);
+        }
+        #current-day {
+            font-size: 0.95rem;
+            color: #ccc;
+            margin-top: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* --- CAMERA INTERFACE --- */
         .video-container {
             position: relative;
             display: inline-block;
@@ -20,11 +104,11 @@
         }
         video {
             width: 100%;
-            border: 3px solid #00adb5;
-            border-radius: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
             background-color: #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
-        /* Efek cermin hanya untuk kamera depan */
         video.mirror {
             transform: scaleX(-1);
         }
@@ -37,22 +121,27 @@
             background-color: #00adb5;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             margin: 5px;
             font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 173, 181, 0.3);
         }
         button:hover {
             background-color: #007c82;
+            transform: translateY(-2px);
         }
         button:disabled {
             background-color: #555;
             cursor: not-allowed;
+            box-shadow: none;
         }
         #status {
-            margin-top: 10px;
+            margin-top: 12px;
             font-style: italic;
-            color: #ccc;
+            color: #aaa;
+            font-size: 14px;
         }
     </style>
 </head>
@@ -60,6 +149,14 @@
 
     <h1>Live Cam</h1>
     
+    <!-- Panel Baterai Liquid Glass -->
+    <div class="battery-container glass-panel">
+        <div class="battery-icon-wrapper">
+            <div id="battery-liquid" class="battery-liquid"></div>
+        </div>
+        <span id="battery-text">--%</span>
+    </div>
+
     <div class="controls">
         <button id="start-btn">Enable Camera</button>
         <button id="switch-btn" style="display: none;">Change Camera 🔄</button>
@@ -71,6 +168,12 @@
     
     <div id="status">Camera is not active</div>
 
+    <!-- Panel Jam Liquid Glass -->
+    <div class="clock-container glass-panel">
+        <div id="digital-clock">00:00:00</div>
+        <div id="current-day">Hari, 00 Masing 0000</div>
+    </div>
+
     <script>
         const video = document.getElementById('webcam');
         const startBtn = document.getElementById('start-btn');
@@ -78,10 +181,69 @@
         const statusDiv = document.getElementById('status');
 
         let currentStream = null;
-        // "user" = kamera depan, "environment" = kamera belakang
         let currentFacingMode = "user"; 
 
-        // Fungsi untuk menghentikan stream yang sedang berjalan sebelum membuka kamera baru
+        // --- SCRIPT 1: MANAGEMENT BATERAI DENGAN BACKUP ---
+        const batteryLiquid = document.getElementById('battery-liquid');
+        const batteryText = document.getElementById('battery-text');
+
+        function updateBatteryUI(level, isCharging) {
+            const percentage = Math.round(level * 100);
+            batteryText.innerText = `${percentage}% ${isCharging ? '⚡' : ''}`;
+            batteryLiquid.style.width = `${percentage}%`;
+
+            // Ubah warna cairan berdasarkan kapasitas baterai
+            if (percentage <= 20) {
+                batteryLiquid.style.background = 'linear-gradient(90deg, #ff416c, #ff4b2b)'; // Merah (Kritis)
+                batteryLiquid.style.boxShadow = '0 0 10px rgba(255, 75, 43, 0.5)';
+            } else if (percentage <= 50) {
+                batteryLiquid.style.background = 'linear-gradient(90deg, #f7971e, #ffd200)'; // Kuning/Oranye
+                batteryLiquid.style.boxShadow = '0 0 10px rgba(255, 210, 0, 0.5)';
+            } else {
+                batteryLiquid.style.background = 'linear-gradient(90deg, #00b4db, #00adb5)'; // Cyan bawaan tema
+                batteryLiquid.style.boxShadow = '0 0 10px rgba(0, 173, 181, 0.5)';
+            }
+        }
+
+        if ('getBattery' in navigator) {
+            navigator.getBattery().then(battery => {
+                updateBatteryUI(battery.level, battery.charging);
+
+                battery.addEventListener('levelchange', () => updateBatteryUI(battery.level, battery.charging));
+                battery.addEventListener('chargingchange', () => updateBatteryUI(battery.level, battery.charging));
+            });
+        } else {
+            // Jika browser tidak mendukung Battery API (seperti beberapa versi iOS Safari)
+            batteryText.innerText = "N/A";
+            batteryLiquid.style.width = "100%";
+        }
+
+        // --- SCRIPT 2: JAM DIGITAL & HARI ---
+        function updateClock() {
+            const now = new Date();
+            
+            // Format Jam, Menit, Detik agar selalu 2 digit (00:00:00)
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('digital-clock').innerText = `${hours}:${minutes}:${seconds}`;
+
+            // Format Hari dan Tanggal lengkap versi Indonesia
+            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            
+            const dayName = days[now.getDay()];
+            const date = now.getDate();
+            const monthName = months[now.getMonth()];
+            const year = now.getFullYear();
+
+            document.getElementById('current-day').innerText = `${dayName}, ${date} ${monthName} ${year}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock(); // Jalankan langsung saat web pertama di-load
+
+
+        // --- SCRIPT 3: SISTEM KAMERA ---
         function stopCurrentStream() {
             if (currentStream) {
                 currentStream.getTracks().forEach(track => {
@@ -90,7 +252,6 @@
             }
         }
 
-        // Fungsi utama untuk menyalakan kamera
         async function startCamera(facingMode) {
             stopCurrentStream();
             statusDiv.innerText = "Opening Camera...";
@@ -109,12 +270,11 @@
                 currentStream = stream;
                 video.srcObject = stream;
 
-                // Mengatur orientasi/efek cermin agar tidak terbalik
                 if (facingMode === "user") {
-                    video.classList.add('mirror'); // Kamera depan dicerminkan agar natural seperti kaca
+                    video.classList.add('mirror');
                     statusDiv.innerText = "Active Front Camera";
                 } else {
-                    video.classList.remove('mirror'); // Kamera belakang normal (tidak dicerminkan)
+                    video.classList.remove('mirror');
                     statusDiv.innerText = "Rear Camera Active";
                 }
 
@@ -128,17 +288,15 @@
             }
         }
 
-        // Event listener saat tombol "Aktifkan Kamera" pertama kali ditekan
         startBtn.addEventListener('click', () => {
             startCamera(currentFacingMode);
         });
 
-        // Event listener untuk tombol "Ganti Kamera"
         switchBtn.addEventListener('click', () => {
-            // Tukar mode antara 'user' dan 'environment'
             currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
             startCamera(currentFacingMode);
         });
     </script>
 </body>
 </html>
+
