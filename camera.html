@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stream Kamera IP</title>
+    <title>Live Camera IP</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,54 +12,132 @@
             color: white;
             padding: 20px;
         }
-        video {
+        .video-container {
+            position: relative;
+            display: inline-block;
             width: 100%;
             max-width: 600px;
+        }
+        video {
+            width: 100%;
             border: 3px solid #00adb5;
             border-radius: 8px;
             background-color: #000;
         }
+        /* Efek cermin hanya untuk kamera depan */
+        video.mirror {
+            transform: scaleX(-1);
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
         button {
-            padding: 10px 20px;
+            padding: 12px 24px;
             font-size: 16px;
             background-color: #00adb5;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            margin-bottom: 20px;
+            margin: 5px;
+            font-weight: bold;
         }
         button:hover {
             background-color: #007c82;
+        }
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 10px;
+            font-style: italic;
+            color: #ccc;
         }
     </style>
 </head>
 <body>
 
-    <h1>Akses Kamera Jarak Jauh</h1>
-    <button id="start-btn">Aktifkan Kamera</button>
-    <br>
-    <video id="webcam" autoplay playsinline></video>
+    <h1>Live Kamera Perangkat</h1>
+    
+    <div class="controls">
+        <button id="start-btn">Aktifkan Kamera</button>
+        <button id="switch-btn" style="display: none;">Ganti Kamera 🔄</button>
+    </div>
+
+    <div class="video-container">
+        <video id="webcam" autoplay playsinline></video>
+    </div>
+    
+    <div id="status">Kamera belum aktif</div>
 
     <script>
         const video = document.getElementById('webcam');
         const startBtn = document.getElementById('start-btn');
+        const switchBtn = document.getElementById('switch-btn');
+        const statusDiv = document.getElementById('status');
 
-        startBtn.addEventListener('click', async () => {
-            try {
-                // Meminta izin kamera ke browser
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "user" }, // Gunakan "environment" untuk kamera belakang HP
-                    audio: false 
+        let currentStream = null;
+        // "user" = kamera depan, "environment" = kamera belakang
+        let currentFacingMode = "user"; 
+
+        // Fungsi untuk menghentikan stream yang sedang berjalan sebelum membuka kamera baru
+        function stopCurrentStream() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => {
+                    track.stop();
                 });
-                
-                // Menampilkan stream ke elemen <video>
+            }
+        }
+
+        // Fungsi utama untuk menyalakan kamera
+        async function startCamera(facingMode) {
+            stopCurrentStream();
+            statusDiv.innerText = "Membuka kamera...";
+
+            try {
+                const constraints = {
+                    video: { 
+                        facingMode: facingMode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                };
+
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                currentStream = stream;
                 video.srcObject = stream;
-                startBtn.style.display = 'none'; // Sembunyikan tombol setelah aktif
+
+                // Mengatur orientasi/efek cermin agar tidak terbalik
+                if (facingMode === "user") {
+                    video.classList.add('mirror'); // Kamera depan dicerminkan agar natural seperti kaca
+                    statusDiv.innerText = "Kamera Depan Aktif";
+                } else {
+                    video.classList.remove('mirror'); // Kamera belakang normal (tidak dicerminkan)
+                    statusDiv.innerText = "Kamera Belakang Aktif";
+                }
+
+                startBtn.style.display = 'none';
+                switchBtn.style.display = 'inline-block';
+
             } catch (err) {
                 console.error("Gagal mengakses kamera: ", err);
-                alert("Izin kamera ditolak atau perangkat tidak mendukung.");
+                statusDiv.innerText = "Gagal mengakses kamera.";
+                alert("Izin ditolak atau jenis kamera tidak tersedia di perangkat ini.");
             }
+        }
+
+        // Event listener saat tombol "Aktifkan Kamera" pertama kali ditekan
+        startBtn.addEventListener('click', () => {
+            startCamera(currentFacingMode);
+        });
+
+        // Event listener untuk tombol "Ganti Kamera"
+        switchBtn.addEventListener('click', () => {
+            // Tukar mode antara 'user' dan 'environment'
+            currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
+            startCamera(currentFacingMode);
         });
     </script>
 </body>
